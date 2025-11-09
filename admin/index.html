@@ -126,17 +126,10 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    const setupClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      }
-    });
 
     const DEFAULT_ADMIN_USERNAME = 'janecorretora';
-    const DEFAULT_ADMIN_EMAIL = 'janecorretora@admin.jane';
     const DEFAULT_ADMIN_PASSWORD = 'Meusite10';
-    const ADMIN_CREATION_FLAG = 'jane-souza-default-admin-v1';
+    const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
 
     const loginView = document.getElementById('login-view');
     const dashboard = document.getElementById('dashboard');
@@ -170,90 +163,53 @@
     function showLogin() {
       loginView.classList.remove('hidden');
       dashboard.classList.add('hidden');
+      propertyList.innerHTML = '';
+      listFeedback.textContent = '';
     }
 
-    async function ensureDefaultAdmin() {
-      if (localStorage.getItem(ADMIN_CREATION_FLAG)) {
-        return;
-      }
-      try {
-        const { error } = await setupClient.auth.signUp({
-          email: DEFAULT_ADMIN_EMAIL,
-          password: DEFAULT_ADMIN_PASSWORD,
-          options: {
-            data: {
-              username: DEFAULT_ADMIN_USERNAME
-            }
-          }
-        });
-
-        if (error && !/already\s+registered/i.test(error.message ?? '')) {
-          console.warn('Não foi possível criar o usuário padrão automaticamente:', error.message);
-          return;
-        }
-        localStorage.setItem(ADMIN_CREATION_FLAG, 'true');
-      } catch (error) {
-        console.warn('Erro inesperado ao criar o usuário padrão.', error);
-      }
+    function isAuthenticated() {
+      return sessionStorage.getItem(AUTH_STORAGE_KEY) === 'true';
     }
 
-    async function initialiseSession() {
-      const { data } = await supabase.auth.getSession();
-      if (data?.session) {
-        showDashboard();
-      } else {
-        showLogin();
-      }
+    function authenticate() {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      showDashboard();
     }
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        showDashboard();
-      } else {
-        showLogin();
-      }
-    });
+    function signOut() {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      showLogin();
+      resetForm();
+    }
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       loginFeedback.textContent = '';
 
       const formData = new FormData(loginForm);
-      const credential = formData.get('credential')?.toString().trim();
+      const credential = formData.get('credential')?.toString().trim().toLowerCase();
       const password = formData.get('password');
 
       if (!credential) {
-        loginFeedback.textContent = 'Informe o usuário ou e-mail para continuar.';
+        loginFeedback.textContent = 'Informe o usuário para continuar.';
         return;
       }
 
-      let email = credential;
-      if (!credential.includes('@')) {
-        if (credential.toLowerCase() === DEFAULT_ADMIN_USERNAME) {
-          email = DEFAULT_ADMIN_EMAIL;
-        } else {
-          loginFeedback.textContent = 'Informe um e-mail válido ou utilize o usuário padrão disponível.';
-          return;
-        }
-      }
-
-      loginForm.classList.add('is-loading');
-
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-      loginForm.classList.remove('is-loading');
-
-      if (error) {
-        loginFeedback.textContent = 'Não foi possível entrar. Verifique as credenciais e tente novamente.';
-      } else {
+      if (
+        credential === DEFAULT_ADMIN_USERNAME &&
+        password === DEFAULT_ADMIN_PASSWORD
+      ) {
+        loginFeedback.textContent = '';
         loginForm.reset();
+        authenticate();
+        return;
       }
+
+      loginFeedback.textContent = 'Usuário ou senha inválidos. Tente novamente.';
     });
 
     logoutButton.addEventListener('click', async () => {
-      await supabase.auth.signOut();
-      propertyList.innerHTML = '';
-      resetForm();
+      signOut();
     });
 
     refreshButton.addEventListener('click', loadProperties);
@@ -405,9 +361,12 @@
       propertyList.appendChild(fragment);
     }
 
-    async function bootstrap() {
-      await ensureDefaultAdmin();
-      await initialiseSession();
+    function bootstrap() {
+      if (isAuthenticated()) {
+        showDashboard();
+      } else {
+        showLogin();
+      }
     }
 
     bootstrap();
