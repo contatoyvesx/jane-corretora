@@ -27,7 +27,7 @@
         <input type="password" id="password" name="password" placeholder="••••••••" value="Meusite10" required>
 
         <button type="submit" class="btn-primary">Entrar</button>
-        <p class="auth-hint">Acesso padrão: usuário <strong>janecorretora</strong> (ou e-mail <strong>janecorretora@janesouza.com</strong>) e senha <strong>Meusite10</strong>.</p>
+        <p class="auth-hint">Acesso padrão definido no sistema: usuário <strong>janecorretora</strong> e senha <strong>Meusite10</strong>.</p>
         <p id="login-feedback" class="form-feedback" role="alert" aria-live="polite"></p>
       </form>
     </section>
@@ -127,14 +127,10 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const DEFAULT_ADMIN_USERNAME = 'janecorretora';
-    const DEFAULT_ADMIN_EMAIL = 'janecorretora@janesouza.com';
-    const DEFAULT_ADMIN_PASSWORD = 'Meusite10';
-    const KNOWN_ADMIN_IDENTIFIERS = new Set([
-      DEFAULT_ADMIN_USERNAME,
-      DEFAULT_ADMIN_EMAIL,
-      DEFAULT_ADMIN_EMAIL.toLowerCase()
-    ]);
+    const ADMIN_CREDENTIALS = Object.freeze({
+      username: 'janecorretora',
+      password: 'Meusite10'
+    });
     const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
 
     const loginView = document.getElementById('login-view');
@@ -196,7 +192,7 @@
       const credentialInput = formData.get('credential');
       const passwordInput = formData.get('password');
 
-      const credential = credentialInput?.toString().trim().toLowerCase();
+      const credential = credentialInput?.toString().trim();
       const password = passwordInput?.toString().trim();
 
       if (!credential) {
@@ -204,10 +200,10 @@
         return;
       }
 
-      const isCredentialValid = KNOWN_ADMIN_IDENTIFIERS.has(credential);
-      const isPasswordValid =
-        password === DEFAULT_ADMIN_PASSWORD ||
-        password?.toLowerCase() === DEFAULT_ADMIN_PASSWORD.toLowerCase();
+      const isCredentialValid =
+        credential === ADMIN_CREDENTIALS.username ||
+        credential?.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase();
+      const isPasswordValid = password === ADMIN_CREDENTIALS.password;
 
       if (isCredentialValid && isPasswordValid) {
         loginFeedback.textContent = '';
