@@ -56,8 +56,9 @@
               <input type="text" id="titulo" name="titulo" placeholder="Apartamento na Vila Olímpia" required>
             </div>
             <div class="field">
-              <label for="imagem_url">URL da imagem</label>
-              <input type="url" id="imagem_url" name="imagem_url" placeholder="https://" required>
+              <label for="imagem">Imagem do imóvel</label>
+              <input type="file" id="imagem" name="imagem" accept="image/*">
+              <small class="field-hint">Selecione uma foto para o card do imóvel.</small>
             </div>
           </div>
 
@@ -133,6 +134,8 @@
       password: 'Meusite10'
     });
     const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
+    const IMAGE_COLUMNS = ['imagem_url', 'imagem'];
+    let preferredImageColumn = IMAGE_COLUMNS[0];
 
     const loginView = document.getElementById('login-view');
     const dashboard = document.getElementById('dashboard');
@@ -140,6 +143,7 @@
     const loginFeedback = document.getElementById('login-feedback');
     const logoutButton = document.getElementById('logout');
     const propertyForm = document.getElementById('property-form');
+    const imageInput = document.getElementById('imagem');
     const formTitle = document.getElementById('form-title');
     const cancelEditButton = document.getElementById('cancel-edit');
     const formFeedback = document.getElementById('form-feedback');
@@ -149,6 +153,7 @@
     const propertyTemplate = document.getElementById('property-card-template');
 
     let editingId = null;
+    let currentImageData = null;
 
     const numberFormatter = new Intl.NumberFormat('pt-BR');
     const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -160,6 +165,7 @@
     function showDashboard() {
       loginView.classList.add('hidden');
       dashboard.classList.remove('hidden');
+      resetForm();
       loadProperties();
     }
 
@@ -285,13 +291,112 @@
       return Number.isFinite(parsed) ? parsed : null;
     }
 
+    function readFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = typeof reader.result === 'string' ? reader.result : '';
+          if (result) {
+            resolve(result);
+          } else {
+            reject(new Error('Resultado de leitura inválido.'));
+          }
+        };
+        reader.onerror = () => {
+          reject(reader.error ?? new Error('Falha ao ler o arquivo.'));
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function syncImageColumnPreference(records) {
+      if (!Array.isArray(records) || records.length === 0) {
+        return;
+      }
+
+      for (const item of records) {
+        if (item && typeof item === 'object') {
+          if ('imagem_url' in item) {
+            preferredImageColumn = 'imagem_url';
+            return;
+          }
+          if ('imagem' in item) {
+            preferredImageColumn = 'imagem';
+            return;
+          }
+        }
+      }
+    }
+
+    function isMissingColumnError(error, columnName) {
+      if (!error) {
+        return false;
+      }
+
+      const message = (error.message || '').toLowerCase();
+      const normalizedColumn = columnName.toLowerCase();
+      const hasColumnMention =
+        message.includes(`"${normalizedColumn}"`) ||
+        message.includes(` ${normalizedColumn}`);
+      const missingKeywords = message.includes('does not exist') || message.includes('unknown');
+      return message.includes('column') && hasColumnMention && missingKeywords;
+    }
+
+    async function persistProperty(basePayload, imageData) {
+      const attemptedColumns = new Set();
+      let lastError = null;
+
+      const columnsToTry = [
+        preferredImageColumn,
+        ...IMAGE_COLUMNS.filter((column) => column !== preferredImageColumn)
+      ];
+
+      for (const column of columnsToTry) {
+        if (attemptedColumns.has(column)) {
+          continue;
+        }
+        attemptedColumns.add(column);
+
+        const payload = { ...basePayload, [column]: imageData };
+        let response;
+        if (editingId) {
+          response = await supabase
+            .from('imoveis')
+            .update(payload)
+            .eq('id', editingId);
+        } else {
+          response = await supabase
+            .from('imoveis')
+            .insert([payload]);
+        }
+
+        if (!response.error) {
+          preferredImageColumn = column;
+          return { error: null };
+        }
+
+        lastError = response.error;
+
+        if (!isMissingColumnError(lastError, column)) {
+          return { error: lastError };
+        }
+      }
+
+      return { error: lastError };
+    }
+
     function resetForm() {
       editingId = null;
+      currentImageData = null;
       propertyForm.reset();
       formTitle.textContent = 'Cadastrar novo imóvel';
       cancelEditButton.classList.add('hidden');
       propertyForm.querySelector('button[type="submit"]').textContent = 'Salvar imóvel';
       formFeedback.textContent = '';
+      if (imageInput) {
+        imageInput.value = '';
+        imageInput.required = true;
+      }
     }
 
     cancelEditButton.addEventListener('click', () => {
@@ -303,33 +408,42 @@
       formFeedback.textContent = '';
 
       const formData = new FormData(propertyForm);
-      const payload = {
-        titulo: formData.get('titulo')?.trim() || null,
-        imagem_url: formData.get('imagem_url')?.trim() || null,
+      const selectedFile = imageInput?.files?.[0] ?? null;
+      let imageData = currentImageData;
+
+      if (selectedFile) {
+        try {
+          imageData = await readFileAsDataUrl(selectedFile);
+        } catch (fileError) {
+          console.error('Não foi possível processar a imagem selecionada:', fileError);
+          formFeedback.textContent = 'Não conseguimos ler a imagem. Tente escolher outro arquivo.';
+          return;
+        }
+      }
+
+      if (!imageData) {
+        formFeedback.textContent = 'Selecione uma imagem do dispositivo para continuar.';
+        return;
+      }
+
+      currentImageData = imageData;
+
+      const basePayload = {
+        titulo: formData.get('titulo')?.toString().trim() || null,
         quartos: parseNumber(formData.get('quartos')),
         banheiros: parseNumber(formData.get('banheiros')),
         metragem: parseNumber(formData.get('metragem')),
         preco: parseNumber(formData.get('preco'))
       };
 
-      if (!payload.titulo || !payload.imagem_url) {
-        formFeedback.textContent = 'Informe pelo menos título e URL da imagem.';
+      if (!basePayload.titulo) {
+        formFeedback.textContent = 'Informe o título do imóvel para continuar.';
         return;
       }
 
       propertyForm.classList.add('is-loading');
 
-      let error;
-      if (editingId) {
-        ({ error } = await supabase
-          .from('imoveis')
-          .update(payload)
-          .eq('id', editingId));
-      } else {
-        ({ error } = await supabase
-          .from('imoveis')
-          .insert([payload]));
-      }
+      const { error } = await persistProperty(basePayload, imageData);
 
       propertyForm.classList.remove('is-loading');
 
@@ -353,7 +467,9 @@
       const editButton = fragment.querySelector('.edit');
       const deleteButton = fragment.querySelector('.delete');
 
-      image.src = property.imagem_url || '';
+      const propertyImageData = property.imagem_url || property.imagem || null;
+      const propertyImage = propertyImageData || 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80';
+      image.src = propertyImage;
       image.alt = `Imagem do imóvel ${property.titulo ?? ''}`.trim();
       title.textContent = property.titulo ?? 'Imóvel sem título';
       const metaParts = [
@@ -371,11 +487,15 @@
         propertyForm.querySelector('button[type="submit"]').textContent = 'Atualizar imóvel';
 
         document.getElementById('titulo').value = property.titulo ?? '';
-        document.getElementById('imagem_url').value = property.imagem_url ?? '';
         document.getElementById('quartos').value = property.quartos ?? '';
         document.getElementById('banheiros').value = property.banheiros ?? '';
         document.getElementById('metragem').value = property.metragem ?? '';
         document.getElementById('preco').value = property.preco ?? '';
+        currentImageData = propertyImageData;
+        if (imageInput) {
+          imageInput.value = '';
+          imageInput.required = false;
+        }
       });
 
       deleteButton.addEventListener('click', async () => {
@@ -413,6 +533,8 @@
         listFeedback.textContent = 'Não foi possível carregar os imóveis. Atualize a página ou tente novamente mais tarde.';
         return;
       }
+
+      syncImageColumnPreference(data);
 
       if (!data || data.length === 0) {
         listFeedback.textContent = 'Nenhum imóvel cadastrado até o momento.';
