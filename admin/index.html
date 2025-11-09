@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jane Souza Corretora • Administração</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2qqXCoV6lXyT0Jw7ogC9TcOXF2v6p4aXNi3G9ns8qL9x4+0A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="../styles.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="admin-body">
+  <main class="admin-wrapper">
+    <section id="login-view" class="auth-card">
+      <div class="auth-header">
+        <span class="brand">Jane Souza<span> Corretora</span></span>
+        <h1>Área Administrativa</h1>
+        <p>Faça login para gerenciar os imóveis publicados no site.</p>
+      </div>
+      <form id="login-form" class="auth-form">
+        <label for="credential">Usuário ou e-mail</label>
+        <input type="text" id="credential" name="credential" placeholder="janecorretora" value="janecorretora" required>
+
+        <label for="password">Senha</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" value="Meusite10" required>
+
+        <button type="submit" class="btn-primary">Entrar</button>
+        <p class="auth-hint">Acesso padrão definido no sistema: usuário <strong>janecorretora</strong> e senha <strong>Meusite10</strong>.</p>
+        <p id="login-feedback" class="form-feedback" role="alert" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="dashboard" class="dashboard hidden">
+      <header class="dashboard-header">
+        <div>
+          <span class="brand">Jane Souza<span> Corretora</span></span>
+          <h1>Painel de Imóveis</h1>
+          <p>Cadastre novos imóveis, atualize informações ou remova itens do portfólio.</p>
+        </div>
+        <button id="logout" class="ghost-button" type="button">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          Sair
+        </button>
+      </header>
+
+      <section class="card">
+        <h2 id="form-title">Cadastrar novo imóvel</h2>
+        <form id="property-form" class="property-form">
+          <input type="hidden" id="property-id" name="id">
+
+          <div class="form-row">
+            <div class="field">
+              <label for="titulo">Título</label>
+              <input type="text" id="titulo" name="titulo" placeholder="Apartamento na Vila Olímpia" required>
+            </div>
+            <div class="field">
+              <label for="imagem_url">URL da imagem</label>
+              <input type="url" id="imagem_url" name="imagem_url" placeholder="https://" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label for="quartos">Quartos</label>
+              <input type="number" id="quartos" name="quartos" min="0" step="1" required>
+            </div>
+            <div class="field">
+              <label for="banheiros">Banheiros</label>
+              <input type="number" id="banheiros" name="banheiros" min="0" step="1" required>
+            </div>
+            <div class="field">
+              <label for="metragem">Metragem (m²)</label>
+              <input type="number" id="metragem" name="metragem" min="0" step="1" required>
+            </div>
+            <div class="field">
+              <label for="preco">Preço</label>
+              <input type="number" id="preco" name="preco" min="0" step="1000" required>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Salvar imóvel</button>
+            <button type="button" id="cancel-edit" class="ghost-button hidden">Cancelar edição</button>
+          </div>
+          <p id="form-feedback" class="form-feedback" role="alert" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="card">
+        <div class="list-header">
+          <h2>Imóveis cadastrados</h2>
+          <button id="refresh" class="ghost-button" type="button">
+            <i class="fa-solid fa-rotate"></i>
+            Atualizar lista
+          </button>
+        </div>
+        <div id="list-feedback" class="form-feedback" role="status" aria-live="polite"></div>
+        <div id="property-list" class="admin-cards"></div>
+      </section>
+    </section>
+  </main>
+
+  <template id="property-card-template">
+    <article class="admin-card">
+      <img class="admin-card-image" alt="Imagem do imóvel">
+      <div class="admin-card-content">
+        <header>
+          <h3 class="admin-card-title"></h3>
+          <p class="admin-card-meta"></p>
+        </header>
+        <p class="admin-card-price"></p>
+        <div class="admin-card-actions">
+          <button type="button" class="ghost-button edit"><i class="fa-solid fa-pen"></i> Editar</button>
+          <button type="button" class="ghost-button danger delete"><i class="fa-solid fa-trash"></i> Excluir</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://rlmjnzsmucoqhkxwusjf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const ADMIN_CREDENTIALS = Object.freeze({
+      username: 'janecorretora',
+      password: 'Meusite10'
+    });
+    const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
+
+    const loginView = document.getElementById('login-view');
+    const dashboard = document.getElementById('dashboard');
+    const loginForm = document.getElementById('login-form');
+    const loginFeedback = document.getElementById('login-feedback');
+    const logoutButton = document.getElementById('logout');
+    const propertyForm = document.getElementById('property-form');
+    const formTitle = document.getElementById('form-title');
+    const cancelEditButton = document.getElementById('cancel-edit');
+    const formFeedback = document.getElementById('form-feedback');
+    const propertyList = document.getElementById('property-list');
+    const listFeedback = document.getElementById('list-feedback');
+    const refreshButton = document.getElementById('refresh');
+    const propertyTemplate = document.getElementById('property-card-template');
+
+    let editingId = null;
+
+    const numberFormatter = new Intl.NumberFormat('pt-BR');
+    const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0
+    });
+
+    function showDashboard() {
+      loginView.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      loadProperties();
+    }
+
+    function showLogin() {
+      loginView.classList.remove('hidden');
+      dashboard.classList.add('hidden');
+      propertyList.innerHTML = '';
+      listFeedback.textContent = '';
+    }
+
+    function isAuthenticated() {
+      return sessionStorage.getItem(AUTH_STORAGE_KEY) === 'true';
+    }
+
+    function authenticate() {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
+      showDashboard();
+    }
+
+    function signOut() {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+      showLogin();
+      resetForm();
+    }
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      loginFeedback.textContent = '';
+
+      const formData = new FormData(loginForm);
+      const credentialInput = formData.get('credential');
+      const passwordInput = formData.get('password');
+
+      const credential = credentialInput?.toString().trim();
+      const password = passwordInput?.toString().trim();
+
+      if (!credential) {
+        loginFeedback.textContent = 'Informe o usuário para continuar.';
+        return;
+      }
+
+      const isCredentialValid =
+        credential === ADMIN_CREDENTIALS.username ||
+        credential?.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase();
+      const isPasswordValid = password === ADMIN_CREDENTIALS.password;
+
+      if (isCredentialValid && isPasswordValid) {
+        loginFeedback.textContent = '';
+        loginForm.reset();
+        authenticate();
+        return;
+      }
+
+      loginFeedback.textContent = 'Não foi possível entrar. Verifique as credenciais e tente novamente.';
+    });
+
+    logoutButton.addEventListener('click', async () => {
+      signOut();
+    });
+
+    refreshButton.addEventListener('click', loadProperties);
+
+    function parseNumber(value) {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    function resetForm() {
+      editingId = null;
+      propertyForm.reset();
+      formTitle.textContent = 'Cadastrar novo imóvel';
+      cancelEditButton.classList.add('hidden');
+      propertyForm.querySelector('button[type="submit"]').textContent = 'Salvar imóvel';
+      formFeedback.textContent = '';
+    }
+
+    cancelEditButton.addEventListener('click', () => {
+      resetForm();
+    });
+
+    propertyForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      formFeedback.textContent = '';
+
+      const formData = new FormData(propertyForm);
+      const payload = {
+        titulo: formData.get('titulo')?.trim() || null,
+        imagem_url: formData.get('imagem_url')?.trim() || null,
+        quartos: parseNumber(formData.get('quartos')),
+        banheiros: parseNumber(formData.get('banheiros')),
+        metragem: parseNumber(formData.get('metragem')),
+        preco: parseNumber(formData.get('preco'))
+      };
+
+      if (!payload.titulo || !payload.imagem_url) {
+        formFeedback.textContent = 'Informe pelo menos título e URL da imagem.';
+        return;
+      }
+
+      propertyForm.classList.add('is-loading');
+
+      let error;
+      if (editingId) {
+        ({ error } = await supabase
+          .from('imoveis')
+          .update(payload)
+          .eq('id', editingId));
+      } else {
+        ({ error } = await supabase
+          .from('imoveis')
+          .insert([payload]));
+      }
+
+      propertyForm.classList.remove('is-loading');
+
+      if (error) {
+        formFeedback.textContent = 'Houve um problema ao salvar. Tente novamente em instantes.';
+        return;
+      }
+
+      resetForm();
+      loadProperties();
+      formFeedback.textContent = 'Imóvel salvo com sucesso!';
+    });
+
+    function createCard(property) {
+      const fragment = propertyTemplate.content.cloneNode(true);
+      const card = fragment.querySelector('.admin-card');
+      const image = fragment.querySelector('.admin-card-image');
+      const title = fragment.querySelector('.admin-card-title');
+      const meta = fragment.querySelector('.admin-card-meta');
+      const price = fragment.querySelector('.admin-card-price');
+      const editButton = fragment.querySelector('.edit');
+      const deleteButton = fragment.querySelector('.delete');
+
+      image.src = property.imagem_url || '';
+      image.alt = `Imagem do imóvel ${property.titulo ?? ''}`.trim();
+      title.textContent = property.titulo ?? 'Imóvel sem título';
+      const metaParts = [
+        property.quartos != null ? `${numberFormatter.format(property.quartos)} quarto(s)` : null,
+        property.banheiros != null ? `${numberFormatter.format(property.banheiros)} banheiro(s)` : null,
+        property.metragem != null ? `${numberFormatter.format(property.metragem)} m²` : null
+      ].filter(Boolean);
+      meta.textContent = metaParts.join(' • ');
+      price.textContent = property.preco != null ? currencyFormatter.format(property.preco) : 'Sob consulta';
+
+      editButton.addEventListener('click', () => {
+        editingId = property.id;
+        formTitle.textContent = 'Editar imóvel';
+        cancelEditButton.classList.remove('hidden');
+        propertyForm.querySelector('button[type="submit"]').textContent = 'Atualizar imóvel';
+
+        document.getElementById('titulo').value = property.titulo ?? '';
+        document.getElementById('imagem_url').value = property.imagem_url ?? '';
+        document.getElementById('quartos').value = property.quartos ?? '';
+        document.getElementById('banheiros').value = property.banheiros ?? '';
+        document.getElementById('metragem').value = property.metragem ?? '';
+        document.getElementById('preco').value = property.preco ?? '';
+      });
+
+      deleteButton.addEventListener('click', async () => {
+        const confirmation = window.confirm('Tem certeza que deseja excluir este imóvel?');
+        if (!confirmation) {
+          return;
+        }
+        const { error } = await supabase
+          .from('imoveis')
+          .delete()
+          .eq('id', property.id);
+        if (error) {
+          listFeedback.textContent = 'Não foi possível remover o imóvel. Tente novamente.';
+        } else {
+          if (editingId === property.id) {
+            resetForm();
+          }
+          loadProperties();
+        }
+      });
+
+      return card;
+    }
+
+    async function loadProperties() {
+      listFeedback.textContent = 'Carregando imóveis...';
+      propertyList.innerHTML = '';
+
+      const { data, error } = await supabase
+        .from('imoveis')
+        .select('*')
+        .order('id', { ascending: false });
+
+      if (error) {
+        listFeedback.textContent = 'Não foi possível carregar os imóveis. Atualize a página ou tente novamente mais tarde.';
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        listFeedback.textContent = 'Nenhum imóvel cadastrado até o momento.';
+        return;
+      }
+
+      listFeedback.textContent = '';
+      const fragment = document.createDocumentFragment();
+      data.forEach((property) => {
+        fragment.appendChild(createCard(property));
+      });
+      propertyList.appendChild(fragment);
+    }
+
+    function bootstrap() {
+      if (isAuthenticated()) {
+        showDashboard();
+      } else {
+        showLogin();
+      }
+    }
+
+    bootstrap();
+  </script>
+</body>
+</html>
