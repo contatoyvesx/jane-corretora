@@ -43,47 +43,7 @@
           <h2>Apartamentos Disponíveis</h2>
           <p>Opções cuidadosamente escolhidas para entregar alto padrão, localização estratégica e valorização garantida.</p>
         </div>
-        <div class="cards-grid">
-          <article class="card">
-            <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80');"></div>
-            <div class="card-body">
-              <h3>Vista Mar Atlântica</h3>
-              <p class="location"><i class="fa-solid fa-location-dot"></i> Balneário Camboriú • Beira-mar</p>
-              <ul class="features">
-                <li><strong>3</strong> Quartos</li>
-                <li><strong>2</strong> Banheiros</li>
-                <li><strong>148m²</strong> privativos</li>
-              </ul>
-              <button class="btn-secondary">Solicitar visita</button>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1505691723518-36a5ac3be353?auto=format&fit=crop&w=800&q=80');"></div>
-            <div class="card-body">
-              <h3>Urban Sky Residence</h3>
-              <p class="location"><i class="fa-solid fa-location-dot"></i> São Paulo • Jardins</p>
-              <ul class="features">
-                <li><strong>2</strong> Suítes</li>
-                <li><strong>3</strong> Banheiros</li>
-                <li><strong>112m²</strong> privativos</li>
-              </ul>
-              <button class="btn-secondary">Receber proposta</button>
-            </div>
-          </article>
-          <article class="card">
-            <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1499916078039-922301b0eb9b?auto=format&fit=crop&w=800&q=80');"></div>
-            <div class="card-body">
-              <h3>Jardins do Vale</h3>
-              <p class="location"><i class="fa-solid fa-location-dot"></i> Curitiba • Ecoville</p>
-              <ul class="features">
-                <li><strong>4</strong> Quartos</li>
-                <li><strong>4</strong> Banheiros</li>
-                <li><strong>186m²</strong> privativos</li>
-              </ul>
-              <button class="btn-secondary">Falar com especialista</button>
-            </div>
-          </article>
-        </div>
+        <div id="lista-imoveis" class="cards-grid"></div>
       </div>
     </section>
 
@@ -167,6 +127,154 @@
   <script>
     const yearSpan = document.getElementById('year');
     yearSpan.textContent = new Date().getFullYear();
+  </script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://rlmjnzsmucoqhkxwusjf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const listaImoveis = document.getElementById('lista-imoveis');
+
+    const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0
+    });
+
+    function formatCurrency(value) {
+      if (typeof value === 'number' && !Number.isNaN(value)) {
+        return currencyFormatter.format(value);
+      }
+
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        return currencyFormatter.format(parsed);
+      }
+
+      return value || 'Sob consulta';
+    }
+
+    function createFeatureItem(label, value, suffix = '') {
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+
+      const item = document.createElement('li');
+      const strong = document.createElement('strong');
+      strong.textContent = `${value}${suffix}`;
+      item.appendChild(strong);
+      item.append(` ${label}`);
+      return item;
+    }
+
+    function sanitizeUrl(url) {
+      if (typeof url !== 'string') {
+        return '';
+      }
+
+      return url.replace(/(['"])/g, '\\$1');
+    }
+
+    function criarCard(imovel) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const cardImage = document.createElement('div');
+      cardImage.className = 'card-image';
+      const imageUrl = (typeof imovel.imagem === 'string' && imovel.imagem.trim())
+        ? imovel.imagem.trim()
+        : 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80';
+      cardImage.style.backgroundImage = `url('${sanitizeUrl(imageUrl)}')`;
+
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body';
+
+      const title = document.createElement('h3');
+      title.textContent = imovel.titulo || 'Imóvel disponível';
+      cardBody.appendChild(title);
+
+      if (imovel.localizacao) {
+        const location = document.createElement('p');
+        location.className = 'location';
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-location-dot';
+        location.appendChild(icon);
+        location.append(` ${imovel.localizacao}`);
+        cardBody.appendChild(location);
+      }
+
+      const price = document.createElement('p');
+      price.className = 'card-price';
+      price.textContent = formatCurrency(imovel.preco);
+      cardBody.appendChild(price);
+
+      const features = document.createElement('ul');
+      features.className = 'features';
+
+      const featureItems = [
+        createFeatureItem('Quartos', imovel.quartos),
+        createFeatureItem('Banheiros', imovel.banheiros),
+        createFeatureItem('Área', imovel.metragem, 'm²')
+      ].filter(Boolean);
+
+      if (featureItems.length > 0) {
+        featureItems.forEach((item) => features.appendChild(item));
+        cardBody.appendChild(features);
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn-secondary';
+      button.textContent = imovel.cta || 'Solicitar visita';
+      cardBody.appendChild(button);
+
+      card.append(cardImage, cardBody);
+      return card;
+    }
+
+    async function carregarImoveis() {
+      const { data, error } = await supabase
+        .from('imoveis')
+        .select('*')
+        .order('id', { ascending: false });
+
+      listaImoveis.innerHTML = '';
+
+      if (error) {
+        console.error('Erro ao carregar imóveis:', error);
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'status-message error';
+        errorMessage.textContent = 'Não foi possível carregar os imóveis no momento.';
+        listaImoveis.appendChild(errorMessage);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'status-message';
+        emptyMessage.textContent = 'Nenhum imóvel cadastrado no momento.';
+        listaImoveis.appendChild(emptyMessage);
+        return;
+      }
+
+      data.forEach((imovel) => {
+        const card = criarCard(imovel);
+        listaImoveis.appendChild(card);
+      });
+    }
+
+    if (!listaImoveis) {
+      console.error('Elemento com ID "lista-imoveis" não encontrado na página.');
+    } else {
+      const placeholder = document.createElement('p');
+      placeholder.className = 'status-message';
+      placeholder.textContent = 'Carregando imóveis...';
+      listaImoveis.appendChild(placeholder);
+
+      carregarImoveis();
+    }
   </script>
 </body>
 </html>
