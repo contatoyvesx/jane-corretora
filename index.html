@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jane Souza Corretora</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container">
+      <div class="brand">Jane Souza<span> Corretora</span></div>
+      <nav class="nav-links">
+        <a href="#destaque">Início</a>
+        <a href="#portfolio">Imóveis</a>
+        <a href="#depoimentos">Depoimentos</a>
+        <a href="#contato">Contato</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="destaque" class="hero">
+      <div class="overlay"></div>
+      <div class="container">
+        <div class="hero-content">
+          <span class="badge">Experiência imobiliária premiada</span>
+          <h1>Encontre o imóvel perfeito com a Jane Souza</h1>
+          <p>Atendimento exclusivo e consultoria especializada para quem busca investir ou viver com conforto no litoral e na capital.</p>
+          <a href="#contato" class="btn-primary">Agende uma conversa</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="portfolio" class="apartamentos section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">Portfólio Selecionado</span>
+          <h2>Apartamentos Disponíveis</h2>
+          <p>Opções cuidadosamente escolhidas para entregar alto padrão, localização estratégica e valorização garantida.</p>
+        </div>
+        <div id="lista-imoveis" class="cards-grid"></div>
+      </div>
+    </section>
+
+    <section id="depoimentos" class="testimonials section">
+      <div class="container">
+        <div class="section-header">
+          <span class="section-badge">Histórias reais</span>
+          <h2>Clientes que confiaram na Jane</h2>
+          <p>Relacionamentos construídos com transparência, respeito e resultados concretos.</p>
+        </div>
+        <div class="testimonials-grid">
+          <blockquote class="testimonial">
+            <p>“A Jane conduziu toda a negociação com segurança. Encontramos o apartamento dos sonhos em apenas duas visitas.”</p>
+            <footer>
+              <span class="name">Mariana Lopes</span>
+              <span class="role">Compradora • São Paulo</span>
+            </footer>
+          </blockquote>
+          <blockquote class="testimonial">
+            <p>“A consultoria de investimento foi impecável. Hoje o imóvel rende acima da média e estou pronto para o próximo.”</p>
+            <footer>
+              <span class="name">Eduardo Carvalho</span>
+              <span class="role">Investidor • Belo Horizonte</span>
+            </footer>
+          </blockquote>
+          <blockquote class="testimonial">
+            <p>“Transparência do início ao fim. A Jane sempre disponível para tirar dúvidas e garantir um processo tranquilo.”</p>
+            <footer>
+              <span class="name">Luciana Ferreira</span>
+              <span class="role">Vendedora • Curitiba</span>
+            </footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <section id="contato" class="contact section">
+      <div class="container contact-wrapper">
+        <div class="contact-info">
+          <span class="section-badge">Fale com a Jane</span>
+          <h2>Vamos conversar sobre o seu próximo imóvel</h2>
+          <p>Preencha o formulário ao lado e receba atendimento personalizado dentro de poucas horas úteis.</p>
+          <ul class="contact-details">
+            <li><i class="fa-solid fa-phone"></i> (11) 99876-5432</li>
+            <li><i class="fa-solid fa-envelope"></i> contato@janesouzacorretora.com</li>
+            <li><i class="fa-solid fa-location-dot"></i> Av. Paulista, 1500 - Bela Vista, São Paulo - SP</li>
+          </ul>
+        </div>
+        <form class="contact-form">
+          <label for="nome">Nome</label>
+          <input type="text" id="nome" name="nome" placeholder="Seu nome completo" required>
+
+          <label for="telefone">Telefone</label>
+          <input type="tel" id="telefone" name="telefone" placeholder="(00) 00000-0000" required>
+
+          <label for="mensagem">Mensagem</label>
+          <textarea id="mensagem" name="mensagem" rows="5" placeholder="Conte como podemos ajudar" required></textarea>
+
+          <button type="submit" class="btn-primary">Enviar mensagem</button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-brand">Jane Souza Corretora</div>
+      <div class="footer-contact">
+        <a href="tel:+5511998765432"><i class="fa-solid fa-phone"></i> (11) 99876-5432</a>
+        <a href="mailto:contato@janesouzacorretora.com"><i class="fa-solid fa-envelope"></i> contato@janesouzacorretora.com</a>
+      </div>
+      <div class="social-links">
+        <a href="#" aria-label="Instagram"><i class="fa-brands fa-instagram"></i></a>
+        <a href="#" aria-label="LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
+        <a href="#" aria-label="WhatsApp"><i class="fa-brands fa-whatsapp"></i></a>
+      </div>
+      <p class="copyright">© <span id="year"></span> Jane Souza Corretora. Todos os direitos reservados.</p>
+    </div>
+  </footer>
+
+  <script>
+    const yearSpan = document.getElementById('year');
+    yearSpan.textContent = new Date().getFullYear();
+  </script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const SUPABASE_URL = 'https://rlmjnzsmucoqhkxwusjf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const listaImoveis = document.getElementById('lista-imoveis');
+
+    const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      maximumFractionDigits: 0
+    });
+
+    function formatCurrency(value) {
+      if (typeof value === 'number' && !Number.isNaN(value)) {
+        return currencyFormatter.format(value);
+      }
+
+      const parsed = Number(value);
+      if (!Number.isNaN(parsed)) {
+        return currencyFormatter.format(parsed);
+      }
+
+      return value || 'Sob consulta';
+    }
+
+    function createFeatureItem(label, value, suffix = '') {
+      if (value === null || value === undefined || value === '') {
+        return null;
+      }
+
+      const item = document.createElement('li');
+      const strong = document.createElement('strong');
+      strong.textContent = `${value}${suffix}`;
+      item.appendChild(strong);
+      item.append(` ${label}`);
+      return item;
+    }
+
+    function sanitizeUrl(url) {
+      if (typeof url !== 'string') {
+        return '';
+      }
+
+      return url.replace(/(['"])/g, '\\$1');
+    }
+
+    function criarCard(imovel) {
+      const card = document.createElement('article');
+      card.className = 'card';
+
+      const cardImage = document.createElement('div');
+      cardImage.className = 'card-image';
+      const imageUrl = (typeof imovel.imagem === 'string' && imovel.imagem.trim())
+        ? imovel.imagem.trim()
+        : 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80';
+      cardImage.style.backgroundImage = `url('${sanitizeUrl(imageUrl)}')`;
+
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body';
+
+      const title = document.createElement('h3');
+      title.textContent = imovel.titulo || 'Imóvel disponível';
+      cardBody.appendChild(title);
+
+      if (imovel.localizacao) {
+        const location = document.createElement('p');
+        location.className = 'location';
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-location-dot';
+        location.appendChild(icon);
+        location.append(` ${imovel.localizacao}`);
+        cardBody.appendChild(location);
+      }
+
+      const price = document.createElement('p');
+      price.className = 'card-price';
+      price.textContent = formatCurrency(imovel.preco);
+      cardBody.appendChild(price);
+
+      const features = document.createElement('ul');
+      features.className = 'features';
+
+      const featureItems = [
+        createFeatureItem('Quartos', imovel.quartos),
+        createFeatureItem('Banheiros', imovel.banheiros),
+        createFeatureItem('Área', imovel.metragem, 'm²')
+      ].filter(Boolean);
+
+      if (featureItems.length > 0) {
+        featureItems.forEach((item) => features.appendChild(item));
+        cardBody.appendChild(features);
+      }
+
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn-secondary';
+      button.textContent = imovel.cta || 'Solicitar visita';
+      cardBody.appendChild(button);
+
+      card.append(cardImage, cardBody);
+      return card;
+    }
+
+    async function carregarImoveis() {
+      const { data, error } = await supabase
+        .from('imoveis')
+        .select('*')
+        .order('id', { ascending: false });
+
+      listaImoveis.innerHTML = '';
+
+      if (error) {
+        console.error('Erro ao carregar imóveis:', error);
+        const errorMessage = document.createElement('p');
+        errorMessage.className = 'status-message error';
+        errorMessage.textContent = 'Não foi possível carregar os imóveis no momento.';
+        listaImoveis.appendChild(errorMessage);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'status-message';
+        emptyMessage.textContent = 'Nenhum imóvel cadastrado no momento.';
+        listaImoveis.appendChild(emptyMessage);
+        return;
+      }
+
+      data.forEach((imovel) => {
+        const card = criarCard(imovel);
+        listaImoveis.appendChild(card);
+      });
+    }
+
+    if (!listaImoveis) {
+      console.error('Elemento com ID "lista-imoveis" não encontrado na página.');
+    } else {
+      const placeholder = document.createElement('p');
+      placeholder.className = 'status-message';
+      placeholder.textContent = 'Carregando imóveis...';
+      listaImoveis.appendChild(placeholder);
+
+      carregarImoveis();
+    }
+  </script>
+</body>
+</html>
