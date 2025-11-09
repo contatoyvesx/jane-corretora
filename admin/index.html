@@ -20,13 +20,14 @@
         <p>Faça login para gerenciar os imóveis publicados no site.</p>
       </div>
       <form id="login-form" class="auth-form">
-        <label for="email">E-mail</label>
-        <input type="email" id="email" name="email" placeholder="seuemail@exemplo.com" required>
+        <label for="credential">Usuário ou e-mail</label>
+        <input type="text" id="credential" name="credential" placeholder="janecorretora" value="janecorretora" required>
 
         <label for="password">Senha</label>
-        <input type="password" id="password" name="password" placeholder="••••••••" required>
+        <input type="password" id="password" name="password" placeholder="••••••••" value="Meusite10" required>
 
         <button type="submit" class="btn-primary">Entrar</button>
+        <p class="auth-hint">Acesso padrão: usuário <strong>janecorretora</strong> e senha <strong>Meusite10</strong>.</p>
         <p id="login-feedback" class="form-feedback" role="alert" aria-live="polite"></p>
       </form>
     </section>
@@ -125,6 +126,17 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const setupClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+
+    const DEFAULT_ADMIN_USERNAME = 'janecorretora';
+    const DEFAULT_ADMIN_EMAIL = 'janecorretora@admin.jane';
+    const DEFAULT_ADMIN_PASSWORD = 'Meusite10';
+    const ADMIN_CREATION_FLAG = 'jane-souza-default-admin-v1';
 
     const loginView = document.getElementById('login-view');
     const dashboard = document.getElementById('dashboard');
@@ -160,6 +172,31 @@
       dashboard.classList.add('hidden');
     }
 
+    async function ensureDefaultAdmin() {
+      if (localStorage.getItem(ADMIN_CREATION_FLAG)) {
+        return;
+      }
+      try {
+        const { error } = await setupClient.auth.signUp({
+          email: DEFAULT_ADMIN_EMAIL,
+          password: DEFAULT_ADMIN_PASSWORD,
+          options: {
+            data: {
+              username: DEFAULT_ADMIN_USERNAME
+            }
+          }
+        });
+
+        if (error && !/already\s+registered/i.test(error.message ?? '')) {
+          console.warn('Não foi possível criar o usuário padrão automaticamente:', error.message);
+          return;
+        }
+        localStorage.setItem(ADMIN_CREATION_FLAG, 'true');
+      } catch (error) {
+        console.warn('Erro inesperado ao criar o usuário padrão.', error);
+      }
+    }
+
     async function initialiseSession() {
       const { data } = await supabase.auth.getSession();
       if (data?.session) {
@@ -182,8 +219,23 @@
       loginFeedback.textContent = '';
 
       const formData = new FormData(loginForm);
-      const email = formData.get('email');
+      const credential = formData.get('credential')?.toString().trim();
       const password = formData.get('password');
+
+      if (!credential) {
+        loginFeedback.textContent = 'Informe o usuário ou e-mail para continuar.';
+        return;
+      }
+
+      let email = credential;
+      if (!credential.includes('@')) {
+        if (credential.toLowerCase() === DEFAULT_ADMIN_USERNAME) {
+          email = DEFAULT_ADMIN_EMAIL;
+        } else {
+          loginFeedback.textContent = 'Informe um e-mail válido ou utilize o usuário padrão disponível.';
+          return;
+        }
+      }
 
       loginForm.classList.add('is-loading');
 
@@ -353,7 +405,12 @@
       propertyList.appendChild(fragment);
     }
 
-    initialiseSession();
+    async function bootstrap() {
+      await ensureDefaultAdmin();
+      await initialiseSession();
+    }
+
+    bootstrap();
   </script>
 </body>
 </html>

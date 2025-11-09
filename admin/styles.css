@@ -91,6 +91,18 @@
   padding: 0.85rem 2.75rem;
 }
 
+.auth-hint {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--admin-muted);
+  margin: -0.5rem 0 0;
+}
+
+.auth-hint strong {
+  color: var(--admin-text);
+  font-weight: 600;
+}
+
 .dashboard {
   display: grid;
   gap: 2rem;
