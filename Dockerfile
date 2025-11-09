@@ -4,6 +4,7 @@ FROM nginx:stable-alpine
 # Copy static assets to the NGINX html directory
 COPY index.html /usr/share/nginx/html/index.html
 COPY styles.css /usr/share/nginx/html/styles.css
+COPY admin /usr/share/nginx/html/admin
 
 # Expose the default HTTP port
 EXPOSE 80
