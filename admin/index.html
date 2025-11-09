@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2qqXCoV6lXyT0Jw7ogC9TcOXF2v6p4aXNi3G9ns8qL9x4+0A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="../styles.css">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -129,6 +129,7 @@
 
     const ADMIN_CREDENTIALS = Object.freeze({
       username: 'janecorretora',
+      email: 'janecorretora@gmail.com',
       password: 'Meusite10'
     });
     const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
@@ -173,12 +174,19 @@
       return sessionStorage.getItem(AUTH_STORAGE_KEY) === 'true';
     }
 
+    let adminUserEnsured = false;
+
     function authenticate() {
       sessionStorage.setItem(AUTH_STORAGE_KEY, 'true');
       showDashboard();
     }
 
-    function signOut() {
+    async function signOut() {
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.warn('Não foi possível encerrar a sessão do Supabase:', error);
+      }
       sessionStorage.removeItem(AUTH_STORAGE_KEY);
       showLogin();
       resetForm();
@@ -200,26 +208,77 @@
         return;
       }
 
-      const isCredentialValid =
-        credential === ADMIN_CREDENTIALS.username ||
-        credential?.toLowerCase() === ADMIN_CREDENTIALS.username.toLowerCase();
-      const isPasswordValid = password === ADMIN_CREDENTIALS.password;
+      const normalizedCredential = credential.toLowerCase();
+      const recognizedCredential =
+        normalizedCredential === ADMIN_CREDENTIALS.username.toLowerCase() ||
+        normalizedCredential === ADMIN_CREDENTIALS.email.toLowerCase();
 
-      if (isCredentialValid && isPasswordValid) {
-        loginFeedback.textContent = '';
-        loginForm.reset();
-        authenticate();
+      if (!recognizedCredential) {
+        loginFeedback.textContent = 'E-mail ou senha incorretos.';
         return;
       }
 
-      loginFeedback.textContent = 'Não foi possível entrar. Verifique as credenciais e tente novamente.';
+      if (password !== ADMIN_CREDENTIALS.password) {
+        loginFeedback.textContent = 'E-mail ou senha incorretos.';
+        return;
+      }
+
+      const emailForAuth = ADMIN_CREDENTIALS.email;
+
+      try {
+        await ensureAdminUserExists();
+
+        const { error } = await supabase.auth.signInWithPassword({
+          email: emailForAuth,
+          password
+        });
+
+        if (error) {
+          if (error.status === 400) {
+            loginFeedback.textContent = 'E-mail ou senha incorretos.';
+            return;
+          }
+
+          throw error;
+        }
+
+        loginForm.reset();
+        authenticate();
+      } catch (error) {
+        console.warn('Falha na autenticação Supabase, ativando modo offline:', error);
+        loginForm.reset();
+        authenticate();
+      }
     });
 
     logoutButton.addEventListener('click', async () => {
-      signOut();
+      await signOut();
     });
 
     refreshButton.addEventListener('click', loadProperties);
+
+    async function ensureAdminUserExists() {
+      if (adminUserEnsured) {
+        return;
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email: ADMIN_CREDENTIALS.email,
+        password: ADMIN_CREDENTIALS.password
+      });
+
+      if (error) {
+        const alreadyExists =
+          error.status === 400 ||
+          /already registered|user exists/i.test(error.message ?? '');
+
+        if (!alreadyExists) {
+          throw error;
+        }
+      }
+
+      adminUserEnsured = true;
+    }
 
     function parseNumber(value) {
       const parsed = Number(value);
