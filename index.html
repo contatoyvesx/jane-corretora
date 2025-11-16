@@ -136,6 +136,7 @@
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const listaImoveis = document.getElementById('lista-imoveis');
+    const INLINE_IMAGE_PLACEHOLDER = '__inline_image__';
 
     const currencyFormatter = new Intl.NumberFormat('pt-BR', {
       style: 'currency',
@@ -154,6 +155,35 @@
       }
 
       return value || 'Sob consulta';
+    }
+
+    function looksLikeDataUrl(value) {
+      return typeof value === 'string' && value.trim().startsWith('data:');
+    }
+
+    function isInlinePlaceholder(value) {
+      return typeof value === 'string' && value.trim() === INLINE_IMAGE_PLACEHOLDER;
+    }
+
+    function resolveCardImage(imovel) {
+      if (!imovel || typeof imovel !== 'object') {
+        return '';
+      }
+
+      if (looksLikeDataUrl(imovel.imagem ?? '')) {
+        return imovel.imagem.trim();
+      }
+
+      const url = typeof imovel.imagem_url === 'string' ? imovel.imagem_url.trim() : '';
+      if (url && !isInlinePlaceholder(url)) {
+        return url;
+      }
+
+      if (typeof imovel.imagem === 'string') {
+        return imovel.imagem.trim();
+      }
+
+      return '';
     }
 
     function createFeatureItem(label, value, suffix = '') {
@@ -183,12 +213,7 @@
 
       const cardImage = document.createElement('div');
       cardImage.className = 'card-image';
-      const storedImage =
-        (typeof imovel.imagem_url === 'string' && imovel.imagem_url.trim())
-          ? imovel.imagem_url.trim()
-          : (typeof imovel.imagem === 'string' && imovel.imagem.trim())
-            ? imovel.imagem.trim()
-            : '';
+      const storedImage = resolveCardImage(imovel);
       const imageUrl = storedImage || 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80';
       cardImage.style.backgroundImage = `url('${sanitizeUrl(imageUrl)}')`;
 
