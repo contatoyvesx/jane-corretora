@@ -135,6 +135,7 @@
     });
     const AUTH_STORAGE_KEY = 'jane-souza-admin-session';
     const IMAGE_COLUMNS = ['imagem_url', 'imagem'];
+    const INLINE_IMAGE_PLACEHOLDER = '__inline_image__';
     let preferredImageColumn = IMAGE_COLUMNS[0];
 
     const loginView = document.getElementById('login-view');
@@ -309,6 +310,35 @@
       });
     }
 
+    function looksLikeDataUrl(value) {
+      return typeof value === 'string' && value.trim().startsWith('data:');
+    }
+
+    function isInlinePlaceholder(value) {
+      return typeof value === 'string' && value.trim() === INLINE_IMAGE_PLACEHOLDER;
+    }
+
+    function resolvePropertyImage(property) {
+      if (!property || typeof property !== 'object') {
+        return null;
+      }
+
+      if (looksLikeDataUrl(property.imagem ?? '')) {
+        return property.imagem.trim();
+      }
+
+      const url = typeof property.imagem_url === 'string' ? property.imagem_url.trim() : '';
+      if (url && !isInlinePlaceholder(url)) {
+        return url;
+      }
+
+      if (typeof property.imagem === 'string') {
+        return property.imagem.trim();
+      }
+
+      return null;
+    }
+
     function syncImageColumnPreference(records) {
       if (!Array.isArray(records) || records.length === 0) {
         return;
@@ -316,12 +346,16 @@
 
       for (const item of records) {
         if (item && typeof item === 'object') {
-          if ('imagem_url' in item) {
-            preferredImageColumn = 'imagem_url';
+          if (looksLikeDataUrl(item.imagem ?? '')) {
+            preferredImageColumn = 'imagem';
             return;
           }
           if ('imagem' in item) {
             preferredImageColumn = 'imagem';
+            return;
+          }
+          if ('imagem_url' in item && !isInlinePlaceholder(item.imagem_url ?? '')) {
+            preferredImageColumn = 'imagem_url';
             return;
           }
         }
@@ -342,14 +376,42 @@
       return message.includes('column') && hasColumnMention && missingKeywords;
     }
 
+    function isValueTooLongError(error) {
+      if (!error) {
+        return false;
+      }
+
+      const message = (error.message || '').toLowerCase();
+      return message.includes('value too long') || message.includes('character varying');
+    }
+
+    function determineColumnsToTry(imageData) {
+      const ordered = [];
+      const inlineImage = looksLikeDataUrl(imageData);
+      const prioritized = inlineImage ? 'imagem' : 'imagem_url';
+
+      if (IMAGE_COLUMNS.includes(prioritized)) {
+        ordered.push(prioritized);
+      }
+
+      if (IMAGE_COLUMNS.includes(preferredImageColumn) && !ordered.includes(preferredImageColumn)) {
+        ordered.push(preferredImageColumn);
+      }
+
+      for (const column of IMAGE_COLUMNS) {
+        if (!ordered.includes(column)) {
+          ordered.push(column);
+        }
+      }
+
+      return ordered;
+    }
+
     async function persistProperty(basePayload, imageData) {
       const attemptedColumns = new Set();
       let lastError = null;
 
-      const columnsToTry = [
-        preferredImageColumn,
-        ...IMAGE_COLUMNS.filter((column) => column !== preferredImageColumn)
-      ];
+      const columnsToTry = determineColumnsToTry(imageData);
 
       for (const column of columnsToTry) {
         if (attemptedColumns.has(column)) {
@@ -357,7 +419,16 @@
         }
         attemptedColumns.add(column);
 
-        const payload = { ...basePayload, [column]: imageData };
+        const payload = { ...basePayload };
+
+        if (column === 'imagem') {
+          payload.imagem = imageData;
+          if (looksLikeDataUrl(imageData)) {
+            payload.imagem_url = INLINE_IMAGE_PLACEHOLDER;
+          }
+        } else {
+          payload[column] = imageData;
+        }
         let response;
         if (editingId) {
           response = await supabase
@@ -377,7 +448,10 @@
 
         lastError = response.error;
 
-        if (!isMissingColumnError(lastError, column)) {
+        if (
+          !isMissingColumnError(lastError, column) &&
+          !isValueTooLongError(lastError)
+        ) {
           return { error: lastError };
         }
       }
@@ -467,7 +541,7 @@
       const editButton = fragment.querySelector('.edit');
       const deleteButton = fragment.querySelector('.delete');
 
-      const propertyImageData = property.imagem_url || property.imagem || null;
+      const propertyImageData = resolvePropertyImage(property);
       const propertyImage = propertyImageData || 'https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=800&q=80';
       image.src = propertyImage;
       image.alt = `Imagem do imóvel ${property.titulo ?? ''}`.trim();
