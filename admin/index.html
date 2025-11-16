@@ -342,6 +342,15 @@
       return message.includes('column') && hasColumnMention && missingKeywords;
     }
 
+    function isValueTooLongError(error) {
+      if (!error) {
+        return false;
+      }
+
+      const message = (error.message || '').toLowerCase();
+      return message.includes('value too long') || message.includes('character varying');
+    }
+
     async function persistProperty(basePayload, imageData) {
       const attemptedColumns = new Set();
       let lastError = null;
@@ -377,7 +386,7 @@
 
         lastError = response.error;
 
-        if (!isMissingColumnError(lastError, column)) {
+        if (!isMissingColumnError(lastError, column) && !isValueTooLongError(lastError)) {
           return { error: lastError };
         }
       }
