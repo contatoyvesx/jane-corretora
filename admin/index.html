@@ -125,6 +125,7 @@
 
     const SUPABASE_URL = 'https://rlmjnzsmucoqhkxwusjf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJsbWpuenNtdWNvcWhreHd1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2NzA5OTEsImV4cCI6MjA3ODI0Njk5MX0.sMNYmeYU2da2kKh0IycV8jnfxbX1CU_b0V9-_NPhl2I';
+    const API_BASE_URL = 'https://apijane.yvesx.com.br';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -162,6 +163,28 @@
       currency: 'BRL',
       maximumFractionDigits: 0
     });
+
+    function buildApiUrl(path = '/') {
+      try {
+        return new URL(path, API_BASE_URL).toString();
+      } catch (error) {
+        console.error('Não foi possível montar a URL da API:', error);
+        return API_BASE_URL;
+      }
+    }
+
+    async function pingBackend() {
+      try {
+        const response = await fetch(buildApiUrl('/health'), { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`API respondeu com status ${response.status}`);
+        }
+        return true;
+      } catch (error) {
+        console.warn('Não foi possível se comunicar com a API administrativa:', error);
+        return false;
+      }
+    }
 
     function showDashboard() {
       loginView.classList.add('hidden');
@@ -624,6 +647,7 @@
     }
 
     function bootstrap() {
+      void pingBackend();
       if (isAuthenticated()) {
         showDashboard();
       } else {
