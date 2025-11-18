@@ -36,6 +36,64 @@ app.add_middleware(
 )
 
 
+@app.get("/imoveis")
+def list_imoveis() -> Dict[str, Any]:
+    """Retorna todos os imóveis cadastrados."""
+    try:
+        response = supabase.table("imoveis").select("*").execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"imoveis": response.data}
+
+
+@app.post("/imoveis")
+def create_imovel(payload: Optional[Dict[str, Any]] = Body(None)) -> Dict[str, Any]:
+    """Insere um novo imóvel."""
+    if not payload or not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload inválido para criação de imóvel.")
+
+    try:
+        response = supabase.table("imoveis").insert(payload).execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"created": response.data}
+
+
+@app.put("/imoveis/{imovel_id}")
+def update_imovel(imovel_id: int, payload: Optional[Dict[str, Any]] = Body(None)) -> Dict[str, Any]:
+    """Atualiza os dados de um imóvel existente pelo ID."""
+    if not payload or not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload inválido para atualização de imóvel.")
+
+    try:
+        response = (
+            supabase.table("imoveis").update(payload).eq("id", imovel_id).execute()
+        )
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Imóvel não encontrado.")
+
+    return {"updated": response.data}
+
+
+@app.delete("/imoveis/{imovel_id}")
+def delete_imovel(imovel_id: int) -> Dict[str, Any]:
+    """Remove um imóvel pelo ID."""
+    try:
+        response = supabase.table("imoveis").delete().eq("id", imovel_id).execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Imóvel não encontrado.")
+
+    return {"deleted": response.data}
+
+
 def resolve_table_name(override: Optional[str]) -> str:
     table_name = (override or DEFAULT_TEST_TABLE).strip()
     if not table_name:
