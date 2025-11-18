@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from fastapi import Body, FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
 from supabase import Client, create_client
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -20,6 +21,77 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI(title="Jane Corretora API", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://jane2.yvesx.com.br",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "*",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/imoveis")
+def list_imoveis() -> Dict[str, Any]:
+    """Retorna todos os imóveis cadastrados."""
+    try:
+        response = supabase.table("imoveis").select("*").execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"imoveis": response.data}
+
+
+@app.post("/imoveis")
+def create_imovel(payload: Optional[Dict[str, Any]] = Body(None)) -> Dict[str, Any]:
+    """Insere um novo imóvel."""
+    if not payload or not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload inválido para criação de imóvel.")
+
+    try:
+        response = supabase.table("imoveis").insert(payload).execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    return {"created": response.data}
+
+
+@app.put("/imoveis/{imovel_id}")
+def update_imovel(imovel_id: int, payload: Optional[Dict[str, Any]] = Body(None)) -> Dict[str, Any]:
+    """Atualiza os dados de um imóvel existente pelo ID."""
+    if not payload or not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="Payload inválido para atualização de imóvel.")
+
+    try:
+        response = (
+            supabase.table("imoveis").update(payload).eq("id", imovel_id).execute()
+        )
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Imóvel não encontrado.")
+
+    return {"updated": response.data}
+
+
+@app.delete("/imoveis/{imovel_id}")
+def delete_imovel(imovel_id: int) -> Dict[str, Any]:
+    """Remove um imóvel pelo ID."""
+    try:
+        response = supabase.table("imoveis").delete().eq("id", imovel_id).execute()
+    except Exception as exc:  # pragma: no cover
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="Imóvel não encontrado.")
+
+    return {"deleted": response.data}
 
 
 def resolve_table_name(override: Optional[str]) -> str:
